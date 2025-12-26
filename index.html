@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>葛米妮睡眠分析小卡片 Pro</title>
+    <script src="https://unpkg.com/@zumer/snapdom/dist/snapdom.js"></script>
+    
+    <style>
+        :root {
+            --primary: #6c5ce7;
+            --primary-light: #a29bfe;
+            --bg: #dfe6e9;
+            --card-bg: #ffffff;
+            --text-main: #2d3436;
+            --text-light: #b2bec3;
+            --good: #00b894;
+            --bad: #ff7675;
+            --neutral: #636e72;
+        }
+
+        body {
+            font-family: 'PingFang SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* --- 卡片主体 --- */
+        .card {
+            width: 400px;
+            background: var(--card-bg);
+            border-radius: 24px;
+            /* 这里的 box-shadow 只在网页展示时有效，snapdom 截图时可能需要特殊处理，但通常不截取外部阴影更干净 */
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            color: white;
+            padding: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-info h2 { margin: 0; font-size: 28px; }
+        .header-info p { margin: 5px 0 0 0; opacity: 0.8; font-size: 13px; letter-spacing: 1px;}
+        
+        .header-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            backdrop-filter: blur(5px);
+        }
+
+        .metrics-list {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .metric-row {
+            display: flex;
+            align-items: center;
+            background: #f8f9fa;
+            border-radius: 16px;
+            padding: 12px 15px;
+        }
+        
+        .m-icon {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            margin-right: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            flex-shrink: 0;
+        }
+
+        .m-content { flex-grow: 1; }
+        
+        .m-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 4px;
+        }
+
+        .m-label { font-size: 12px; color: var(--text-light); font-weight: bold;}
+        .m-value { font-size: 18px; font-weight: bold; color: var(--text-main); }
+
+        .m-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .m-comment {
+            font-size: 11px;
+            color: var(--primary);
+            opacity: 0.8;
+            font-weight: 500;
+        }
+
+        .trend-pill {
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+        .trend-good { background: rgba(0, 184, 148, 0.1); color: var(--good); }
+        .trend-bad { background: rgba(255, 118, 117, 0.1); color: var(--bad); }
+        .trend-flat { background: rgba(99, 110, 114, 0.1); color: var(--neutral); }
+
+        .gemini-box {
+            margin: 0 20px 25px 20px;
+            background: #f1f2f6;
+            border-radius: 16px;
+            padding: 15px;
+            position: relative;
+            border-left: 4px solid var(--primary);
+        }
+
+        .gemini-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .gemini-text {
+            font-size: 13px;
+            line-height: 1.6;
+            color: #444;
+            text-align: justify;
+        }
+
+        .footer {
+            text-align: center;
+            padding-bottom: 15px;
+            font-size: 10px;
+            color: #ccc;
+        }
+
+        /* --- 按钮样式 --- */
+        .controls { margin-top: 20px; display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;}
+        .btn {
+            padding: 10px 24px; border: none; border-radius: 50px;
+            cursor: pointer; font-weight: bold; font-size: 14px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .btn-main { background: var(--primary); color: white; }
+        .btn-main:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(108, 92, 231, 0.3); }
+        .btn-sub { background: white; color: var(--text-main); }
+        .btn-sub:hover { transform: translateY(-2px); }
+        
+        /* 下载按钮特殊颜色 */
+        .btn-download { background: #2d3436; color: white; }
+        .btn-download:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(45, 52, 54, 0.3); }
+
+        .modal-wrap {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0; visibility: hidden; transition: all 0.3s;
+            z-index: 999;
+        }
+        .modal-wrap.active { opacity: 1; visibility: visible; }
+        .modal { background: white; width: 90%; max-width: 500px; padding: 25px; border-radius: 20px; }
+        textarea { width: 100%; height: 200px; padding: 10px; border: 1px solid #ddd; border-radius: 10px; font-family: monospace; resize: vertical; margin: 15px 0; box-sizing: border-box;}
+        textarea:focus { outline: 2px solid var(--primary); border-color: transparent; }
+    </style>
+</head>
+<body>
+
+    <div class="card" id="card">
+        <div class="card-header">
+            <div class="header-info">
+                <h2 id="disp-day">Day 14</h2>
+                <p id="disp-date">2025.12.26 / Friday</p>
+            </div>
+            <div class="header-badge">Fuzz Sleep</div>
+        </div>
+
+        <div class="metrics-list" id="metrics-container"></div>
+
+        <div class="gemini-box">
+            <div class="gemini-title">✨ Gemini Insight</div>
+            <div class="gemini-text" id="disp-comment">Waiting for data...</div>
+        </div>
+
+        <div class="footer">Generated by Gemini Analysis</div>
+    </div>
+
+    <div class="controls">
+        <button class="btn btn-sub" onclick="copyTemplate()">📋 复制 JSON 模板</button>
+        <button class="btn btn-main" onclick="openModal()">✏️ 填入今日数据</button>
+        <button class="btn btn-download" onclick="downloadImage()">📸 保存为图片</button>
+    </div>
+
+    <div class="modal-wrap" id="modal">
+        <div class="modal">
+            <h3 style="margin-top:0;">输入数据 JSON</h3>
+            <textarea id="json-input" placeholder="请粘贴 Gemini 给你的 JSON 代码..."></textarea>
+            <div style="text-align: right;">
+                <button class="btn btn-sub" onclick="closeModal()" style="margin-right: 10px; box-shadow:none; border:1px solid #eee;">取消</button>
+                <button class="btn btn-main" onclick="renderCard()">生成卡片</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 当前数据状态，用于生成文件名
+        let currentDayVal = "14";
+
+        // 默认占位数据
+        const defaultData = {
+            "day": "00",
+            "date": "YYYY.MM.DD",
+            "metrics": [
+                {
+                    "icon": "🛌", "label": "睡眠效率", "value": "00.0%", 
+                    "trend": "up", "status": "good", "diff": "0.0%", "comment": "数据状态简评"
+                },
+                {
+                    "icon": "🌊", "label": "深度睡眠", "value": "00:00", 
+                    "trend": "up", "status": "good", "diff": "+0h00m", "comment": "深度睡眠阶段分析"
+                },
+                {
+                    "icon": "❤️", "label": "平均心率", "value": "00 bpm", 
+                    "trend": "down", "status": "good", "diff": "-0.0", "comment": "静息心率健康度"
+                },
+                {
+                    "icon": "⚡", "label": "HRV", "value": "00 ms", 
+                    "trend": "up", "status": "good", "diff": "+0 ms", "comment": "身体恢复能力指标"
+                },
+                {
+                    "icon": "⏳", "label": "总睡眠", "value": "00:00", 
+                    "trend": "flat", "status": "neutral", "diff": "0m", "comment": "时长是否达标"
+                }
+            ],
+            "overall": "这里是来自 Gemini 的深度分析简述。它将根据上述数据为你提供个性化的睡眠建议、心理状态观察以及针对性的健康提醒 w。"
+        };
+
+        function render(data) {
+            currentDayVal = data.day; // 更新天数供下载使用
+            document.getElementById('disp-day').innerText = `Day ${data.day}`;
+            document.getElementById('disp-date').innerText = data.date;
+            document.getElementById('disp-comment').innerText = data.overall;
+
+            const container = document.getElementById('metrics-container');
+            container.innerHTML = ''; 
+
+            data.metrics.forEach(m => {
+                let arrow = m.trend === 'up' ? '▲' : (m.trend === 'down' ? '▼' : '-');
+                let trendClass = m.status === 'good' ? 'trend-good' : (m.status === 'bad' ? 'trend-bad' : 'trend-flat');
+
+                const html = `
+                <div class="metric-row">
+                    <div class="m-icon">${m.icon}</div>
+                    <div class="m-content">
+                        <div class="m-top">
+                            <span class="m-label">${m.label}</span>
+                            <div class="trend-pill ${trendClass}">${arrow} ${m.diff}</div>
+                        </div>
+                        <div class="m-bottom">
+                            <span class="m-value">${m.value}</span>
+                            <span class="m-comment">${m.comment}</span>
+                        </div>
+                    </div>
+                </div>`;
+                container.insertAdjacentHTML('beforeend', html);
+            });
+        }
+
+        // 调用 snapdom 进行下载
+        function downloadImage() {
+            const cardElement = document.getElementById('card');
+            
+            // 使用 snapdom API
+            // scale: 2 确保 retina 屏幕下清晰
+            snapdom.download(cardElement, {
+                filename: `Gemini_Sleep_Day_${currentDayVal}`,
+                format: 'png',
+                scale: 2 
+            }).then(() => {
+                console.log('Image saved!');
+            }).catch(err => {
+                console.error('Snapdom error:', err);
+                alert('保存图片失败，请重试或手动截图 >_<');
+            });
+        }
+
+        render(defaultData);
+
+        const modal = document.getElementById('modal');
+        const input = document.getElementById('json-input');
+
+        function openModal() {
+            modal.classList.add('active');
+            if(!input.value) input.value = JSON.stringify(defaultData, null, 4);
+        }
+        function closeModal() { modal.classList.remove('active'); }
+        function renderCard() {
+            try {
+                const data = JSON.parse(input.value);
+                render(data);
+                closeModal();
+            } catch (e) { alert('JSON 格式有误: ' + e.message); }
+        }
+        function copyTemplate() {
+            navigator.clipboard.writeText(JSON.stringify(defaultData, null, 4)).then(() => {
+                alert('模板已复制！w');
+            });
+        }
+        modal.addEventListener('click', (e) => {
+            if(e.target === modal) closeModal();
+        });
+    </script>
+</body>
+</html>
